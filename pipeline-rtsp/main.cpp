@@ -6,16 +6,12 @@
 #include <gst/gst.h>
 #include <gst/rtsp-server/rtsp-server.h>
 
-// GStreamer C ref
-// https://gstreamer.freedesktop.org/documentation/gstreamer/gst.html?gi-language=c
 
 using namespace std;
 using namespace std::literals;
 
 void signalHandler(int sig_num) {
     cout << "Received signal: " << to_string(sig_num) << endl;
-    // do stop
-
     exit(sig_num);
 }
 
@@ -31,7 +27,6 @@ string createPipelineString(const string& video_file) {
              << "rtph264pay name=pay0 pt=96 "
              << ")";
 
-    cout << pipeline.str() << endl;    
     return pipeline.str();
 }
 
@@ -70,6 +65,8 @@ int main(int argc, char** argv) {
     gst_rtsp_media_factory_set_launch(media_factory, pipeline.c_str());
 
     gst_rtsp_media_factory_set_shared(media_factory, true);
+    
+    gst_rtsp_media_factory_set_eos_shutdown(media_factory, false);
 
     const string& mount_pount{"/cam1"};
     gst_rtsp_mount_points_add_factory(mount_points, mount_pount.c_str(), media_factory);
@@ -88,15 +85,11 @@ int main(int argc, char** argv) {
 
     cout << "Server url: " << getRTSPUrl(port, mount_pount) << endl;
 
-    // This blocks the thread
     g_main_loop_run(g_main_loop);
-
-    // Stop server
     if(g_main_loop && g_main_loop_is_running(g_main_loop)) {
         g_main_loop_quit(g_main_loop);
     }
 
-    // Delete server
     if (media_factory) {
         g_object_unref(media_factory);
     }
