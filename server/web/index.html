@@ -1,431 +1,154 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html>
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Paladium Video Pipeline - HLS + WebRTC Players</title>
-<style>
-body{
-  font: 14px system-ui, -apple-system, BlinkMacSystemFont, sans-serif; 
-  margin: 0; 
-  padding: 24px;
-  background: #f8f9fa;
-  color: #333;
-}
-.header {
-  text-align: center;
-  margin-bottom: 32px;
-  padding: 24px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-.header h1 {
-  margin: 0 0 8px 0;
-  color: #2c3e50;
-  font-weight: 600;
-}
-.header p {
-  margin: 0;
-  color: #666;
-  font-size: 16px;
-}
-.container{
-  display: grid; 
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 24px; 
-  max-width: 1400px;
-  margin: 0 auto;
-}
-.card{
-  background: white;
-  border-radius: 12px; 
-  padding: 20px; 
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  transition: transform 0.2s ease;
-}
-.card:hover {
-  transform: translateY(-2px);
-}
-.card h3 {
-  margin: 0 0 16px 0;
-  color: #2c3e50;
-  font-weight: 600;
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.card h3::before {
-  content: '▶';
-  color: #e74c3c;
-  font-size: 16px;
-}
-video{
-  width: 100%; 
-  max-width: 100%; 
-  height: auto;
-  background: #000;
-  border-radius: 8px;
-  margin: 12px 0;
-}
-.controls{
-  margin: 0 0 16px 0;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-button {
-  padding: 10px 16px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.btn-primary {
-  background: #3498db;
-  color: white;
-}
-.btn-primary:hover {
-  background: #2980b9;
-  transform: translateY(-1px);
-}
-.btn-secondary {
-  background: #95a5a6;
-  color: white;
-}
-.btn-secondary:hover {
-  background: #7f8c8d;
-}
-.status {
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 13px;
-  margin-top: 8px;
-  font-family: 'Monaco', 'Menlo', monospace;
-}
-.status.info { background: #e8f4fd; color: #2980b9; border: 1px solid #bee5eb; }
-.status.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-.status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-.urls {
-  background: #f8f9fa;
-  padding: 12px;
-  border-radius: 6px;
-  margin-top: 12px;
-  border-left: 4px solid #3498db;
-}
-.urls h4 {
-  margin: 0 0 8px 0;
-  font-size: 14px;
-  color: #2c3e50;
-}
-.urls code {
-  display: block;
-  background: white;
-  padding: 6px 8px;
-  border-radius: 4px;
-  font-family: 'Monaco', 'Menlo', monospace;
-  font-size: 12px;
-  margin: 4px 0;
-  border: 1px solid #ddd;
-  word-break: break-all;
-}
-</style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paladium Video Pipeline</title>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .player { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .player h3 { margin: 0 0 10px 0; color: #333; }
+        video { width: 100%; max-width: 500px; background: #000; }
+        button { padding: 8px 16px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-play { background: #007bff; color: white; }
+        .btn-stop { background: #6c757d; color: white; }
+        .status { margin: 10px 0; padding: 8px; border-radius: 4px; font-size: 14px; }
+        .status.info { background: #e7f3ff; color: #0066cc; }
+        .status.success { background: #e7f6e7; color: #006600; }
+        .status.error { background: #ffe7e7; color: #cc0000; }
+        .urls { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .urls code { background: white; padding: 4px; border-radius: 2px; font-family: monospace; }
+    </style>
 </head>
 <body>
-<div class="header">
-  <h1>Paladium Video Pipeline Demo</h1>
-  <p>Testing SRT → HLS/WebRTC streaming through MediaMTX</p>
-</div>
+    <div class="container">
+        <h1>Paladium Video Pipeline</h1>
+        <p>Stream testing interface for HLS and WebRTC playback</p>
 
-<div class="container">
-  <div class="card">
-    <h3>HLS Player</h3>
-    <div class="controls">
-      <button id="hls-play" class="btn-primary">▶ Play HLS Stream</button>
-      <button id="hls-stop" class="btn-secondary">⏹ Stop</button>
-    </div>
-    <video id="hls-video" controls playsinline></video>
-    <div id="hls-status" class="status info">Ready to play HLS stream</div>
-    
-    <div class="urls">
-      <h4>HLS Stream URL:</h4>
-      <code id="hls-url">http://localhost:8888/cam1/index.m3u8</code>
-    </div>
-  </div>
+        <div class="player">
+            <h3>HLS Player</h3>
+            <button id="hls-play" class="btn-play">Play HLS</button>
+            <button id="hls-stop" class="btn-stop">Stop</button>
+            <video id="hls-video" controls playsinline></video>
+            <div id="hls-status" class="status info">Ready</div>
+            <div class="urls">
+                <strong>HLS URL:</strong> <code>http://localhost:8888/cam1/index.m3u8</code>
+            </div>
+        </div>
 
-  <div class="card">
-    <h3>WebRTC Player (WHEP)</h3>
-    <div class="controls">
-      <button id="rtc-play" class="btn-primary">▶ Play WebRTC Stream</button>
-      <button id="rtc-stop" class="btn-secondary">⏹ Stop</button>
-    </div>
-    <video id="rtc-video" controls playsinline muted></video>
-    <div id="rtc-status" class="status info">Ready to play WebRTC stream</div>
-    
-    <div class="urls">
-      <h4>WebRTC WHEP URL:</h4>
-      <code id="rtc-url">http://localhost:8889/cam1/whep</code>
-    </div>
-  </div>
-  
-  <div class="card">
-    <h3>Stream Status & Info</h3>
-    <div class="controls">
-      <button id="refresh-status" class="btn-primary">🔄 Refresh Status</button>
-    </div>
-    <div id="stream-status" class="status info">Check MediaMTX stream status</div>
-    
-    <div class="urls">
-      <h4>External Player URLs:</h4>
-      <code>VLC SRT: srt://localhost:8890?streamid=read:cam1</code>
-      <code>VLC HLS: http://localhost:8888/cam1/index.m3u8</code>
-    </div>
-  </div>
-</div>
+        <div class="player">
+            <h3>WebRTC Player</h3>
+            <button id="rtc-play" class="btn-play">Play WebRTC</button>
+            <button id="rtc-stop" class="btn-stop">Stop</button>
+            <video id="rtc-video" controls playsinline muted></video>
+            <div id="rtc-status" class="status info">Ready</div>
+            <div class="urls">
+                <strong>WebRTC URL:</strong> <code>http://localhost:8889/cam1/whep</code>
+            </div>
+        </div>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-<script>
-const hlsVideo = document.getElementById('hls-video');
-const hlsPlayBtn = document.getElementById('hls-play');
-const hlsStopBtn = document.getElementById('hls-stop');
-const hlsStatus = document.getElementById('hls-status');
-let hls;
+        <div class="player">
+            <h3>External Player URLs</h3>
+            <div class="urls">
+                <strong>VLC SRT:</strong> <code>srt://localhost:8890?streamid=read:cam1</code><br>
+                <strong>VLC HLS:</strong> <code>http://localhost:8888/cam1/index.m3u8</code>
+            </div>
+        </div>
+    </div>
 
-function updateHlsStatus(message, type = 'info') {
-  hlsStatus.textContent = message;
-  hlsStatus.className = `status ${type}`;
-}
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script>
+        // HLS Player
+        const hlsVideo = document.getElementById('hls-video');
+        const hlsStatus = document.getElementById('hls-status');
+        let hls;
 
-function playHls(name) {
-  try {
-    const src = `http://localhost:8888/${name}/index.m3u8`;
-    updateHlsStatus('Starting HLS stream...', 'info');
-    
-    if (hlsVideo.canPlayType('application/vnd.apple.mpegurl')) {
-      // Native HLS support (Safari)
-      hlsVideo.src = src;
-      hlsVideo.play().then(() => {
-        updateHlsStatus('Playing HLS stream (native)', 'success');
-      }).catch(err => {
-        updateHlsStatus(`HLS playback error: ${err.message}`, 'error');
-      });
-    } else if (Hls.isSupported()) {
-      if (hls) { 
-        hls.destroy(); 
-        hls = undefined; 
-      }
-      
-      hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: true,
-        backBufferLength: 90
-      });
-      
-      hls.on(Hls.Events.MEDIA_ATTACHED, () => {
-        updateHlsStatus('HLS media attached', 'info');
-      });
-      
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        updateHlsStatus('Playing HLS stream (HLS.js)', 'success');
-        hlsVideo.play();
-      });
-      
-      hls.on(Hls.Events.ERROR, (event, data) => {
-        if (data.fatal) {
-          updateHlsStatus(`HLS fatal error: ${data.type} - ${data.details}`, 'error');
-        } else {
-          console.warn('HLS non-fatal error:', data);
+        function updateHlsStatus(msg, type = 'info') {
+            hlsStatus.textContent = msg;
+            hlsStatus.className = `status ${type}`;
         }
-      });
-      
-      hls.loadSource(src);
-      hls.attachMedia(hlsVideo);
-    } else {
-      updateHlsStatus('HLS not supported in this browser', 'error');
-    }
-  } catch (err) {
-    updateHlsStatus(`Error starting HLS: ${err.message}`, 'error');
-  }
-}
 
-function stopHls() {
-  try {
-    if (hls) {
-      hls.destroy();
-      hls = undefined;
-    }
-    if (hlsVideo.src) {
-      hlsVideo.pause();
-      hlsVideo.src = '';
-    }
-    updateHlsStatus('HLS stream stopped', 'info');
-  } catch (err) {
-    updateHlsStatus(`Error stopping HLS: ${err.message}`, 'error');
-  }
-}
+        document.getElementById('hls-play').onclick = () => {
+            const src = 'http://localhost:8888/cam1/index.m3u8';
+            updateHlsStatus('Starting...', 'info');
+            
+            if (hlsVideo.canPlayType('application/vnd.apple.mpegurl')) {
+                hlsVideo.src = src;
+                hlsVideo.play().then(() => updateHlsStatus('Playing (native)', 'success'))
+                    .catch(err => updateHlsStatus(`Error: ${err.message}`, 'error'));
+            } else if (Hls.isSupported()) {
+                if (hls) hls.destroy();
+                hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    updateHlsStatus('Playing (HLS.js)', 'success');
+                    hlsVideo.play();
+                });
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) updateHlsStatus(`Error: ${data.details}`, 'error');
+                });
+                hls.loadSource(src);
+                hls.attachMedia(hlsVideo);
+            } else {
+                updateHlsStatus('HLS not supported', 'error');
+            }
+        };
 
-hlsPlayBtn.onclick = () => playHls('cam1');
-hlsStopBtn.onclick = () => stopHls();
-</script>
+        document.getElementById('hls-stop').onclick = () => {
+            if (hls) { hls.destroy(); hls = null; }
+            hlsVideo.pause();
+            hlsVideo.src = '';
+            updateHlsStatus('Stopped', 'info');
+        };
 
-<script>
-// Enhanced WebRTC (WHEP) receiver for MediaMTX
-const rtcVideo = document.getElementById('rtc-video');
-const rtcPlay = document.getElementById('rtc-play');
-const rtcStop = document.getElementById('rtc-stop');
-const rtcStatus = document.getElementById('rtc-status');
-const refreshStatusBtn = document.getElementById('refresh-status');
-const streamStatus = document.getElementById('stream-status');
+        // WebRTC Player
+        const rtcVideo = document.getElementById('rtc-video');
+        const rtcStatus = document.getElementById('rtc-status');
+        let pc;
 
-let pc;
-let whepResource; // URL to PATCH/DELETE (from Location header)
-
-function updateRtcStatus(msg, type = 'info') { 
-  rtcStatus.textContent = msg; 
-  rtcStatus.className = `status ${type}`;
-}
-
-function updateStreamStatus(msg, type = 'info') {
-  streamStatus.textContent = msg;
-  streamStatus.className = `status ${type}`;
-}
-
-async function gatherOffer(pc) {
-  const offer = await pc.createOffer({offerToReceiveVideo: true, offerToReceiveAudio: true});
-  await pc.setLocalDescription(offer);
-  
-    if (pc.iceGatheringState === 'complete') return offer.sdp;
-  
-  await new Promise(resolve => {
-    const check = () => {
-      if (pc.iceGatheringState === 'complete') { 
-        pc.removeEventListener('icegatheringstatechange', check); 
-        resolve(); 
-      }
-    };
-    pc.addEventListener('icegatheringstatechange', check);
-    setTimeout(() => resolve(), 3000);
-  });
-  return pc.localDescription.sdp;
-}
-
-async function startWebRTC(path) {
-  try {
-    stopWebRTC();
-    updateRtcStatus('Initializing WebRTC connection...', 'info');
-    
-    pc = new RTCPeerConnection({
-      sdpSemantics: 'unified-plan',
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-    });
-    
-    pc.addEventListener('track', ev => {
-      updateRtcStatus('Received media track', 'info');
-      if (ev.streams && ev.streams[0]) {
-        rtcVideo.srcObject = ev.streams[0];
-      } else {
-        const inbound = new MediaStream(); 
-        inbound.addTrack(ev.track); 
-        rtcVideo.srcObject = inbound;
-      }
-      updateRtcStatus('Playing WebRTC stream', 'success');
-    });
-
-    pc.addEventListener('connectionstatechange', () => {
-      updateRtcStatus(`Connection state: ${pc.connectionState}`, 
-        pc.connectionState === 'connected' ? 'success' : 'info');
-    });
-
-    pc.addEventListener('iceconnectionstatechange', () => {
-      console.log('ICE connection state:', pc.iceConnectionState);
-    });
-
-    updateRtcStatus('Creating offer...', 'info');
-    const sdp = await gatherOffer(pc);
-
-      updateRtcStatus('Sending WHEP offer...', 'info');
-  const res = await fetch(`http://localhost:8889/${encodeURIComponent(path)}/whep`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/sdp' },
-    body: sdp,
-  });
-    
-    if (!res.ok) { 
-      const errorText = await res.text();
-      updateRtcStatus(`WHEP POST failed: ${res.status} - ${errorText}`, 'error'); 
-      return; 
-    }
-
-    whepResource = res.headers.get('Location');
-    const answer = await res.text();
-
-    updateRtcStatus('Setting remote description...', 'info');
-    await pc.setRemoteDescription({ type: 'answer', sdp: answer });
-    updateRtcStatus('WebRTC handshake complete', 'success');
-    
-  } catch (err) {
-    updateRtcStatus(`WebRTC error: ${err.message}`, 'error');
-    console.error('WebRTC error:', err);
-  }
-}
-
-function stopWebRTC() {
-  try {
-    if (pc) { 
-      pc.getSenders().forEach(s => s.track && s.track.stop()); 
-      pc.close(); 
-      pc = undefined; 
-    }
-    if (whepResource) { 
-      fetch(whepResource, { method: 'DELETE' }).catch(()=>{}); 
-      whepResource = undefined; 
-    }
-    if (rtcVideo.srcObject) { 
-      rtcVideo.srcObject.getTracks().forEach(t => t.stop()); 
-      rtcVideo.srcObject = null; 
-    }
-    updateRtcStatus('WebRTC stream stopped', 'info');
-  } catch (err) {
-    updateRtcStatus(`Error stopping WebRTC: ${err.message}`, 'error');
-  }
-}
-
-async function checkStreamStatus() {
-  try {
-    updateStreamStatus('Checking stream availability...', 'info');
-    
-    const hlsRes = await fetch('http://localhost:8888/cam1/index.m3u8');
-    const webrtcRes = await fetch('http://localhost:8889/cam1/whep', {method: 'HEAD'});
-    
-    if (hlsRes.ok) {
-      const hlsText = await hlsRes.text();
-      if (hlsText.includes('#EXTM3U')) {
-        if (webrtcRes.status === 405) {
-          updateStreamStatus('Stream cam1: Active (HLS + WebRTC available)', 'success');
-        } else {
-          updateStreamStatus('Stream cam1: Active (HLS available)', 'success');
+        function updateRtcStatus(msg, type = 'info') {
+            rtcStatus.textContent = msg;
+            rtcStatus.className = `status ${type}`;
         }
-      } else {
-        updateStreamStatus('Stream cam1: HLS format error', 'error');
-      }
-    } else {
-      updateStreamStatus('Stream cam1: Not available', 'error');
-    }
-  } catch (err) {
-    updateStreamStatus(`Status check failed: ${err.message}`, 'error');
-  }
-}
 
-rtcPlay.onclick = () => startWebRTC('cam1');
-rtcStop.onclick = () => stopWebRTC();
-refreshStatusBtn.onclick = () => checkStreamStatus();
+        document.getElementById('rtc-play').onclick = async () => {
+            try {
+                updateRtcStatus('Connecting...', 'info');
+                
+                pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+                
+                pc.ontrack = (ev) => {
+                    rtcVideo.srcObject = ev.streams[0] || new MediaStream([ev.track]);
+                    updateRtcStatus('Playing', 'success');
+                };
 
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(checkStreamStatus, 1000);
-});
-</script>
+                const offer = await pc.createOffer({ offerToReceiveVideo: true });
+                await pc.setLocalDescription(offer);
+
+                const res = await fetch('http://localhost:8889/cam1/whep', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/sdp' },
+                    body: offer.sdp
+                });
+
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                
+                const answer = await res.text();
+                await pc.setRemoteDescription({ type: 'answer', sdp: answer });
+                
+            } catch (err) {
+                updateRtcStatus(`Error: ${err.message}`, 'error');
+            }
+        };
+
+        document.getElementById('rtc-stop').onclick = () => {
+            if (pc) { pc.close(); pc = null; }
+            if (rtcVideo.srcObject) {
+                rtcVideo.srcObject.getTracks().forEach(t => t.stop());
+                rtcVideo.srcObject = null;
+            }
+            updateRtcStatus('Stopped', 'info');
+        };
+    </script>
 </body>
 </html>

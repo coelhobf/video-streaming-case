@@ -1,36 +1,35 @@
-logLevel: info
+# MediaMTX Configuration for Paladium Video Pipeline
+logLevel: debug
 logDestinations: [stdout]
-logFile: mediamtx.log
 
+# API for monitoring
 api: yes
 apiAddress: :9997
 
+# Metrics for monitoring
 metrics: yes
 metricsAddress: :9998
 
+# SRT input from Pipeline 2
 srt: yes
 srtAddress: :8890
 
+# HLS output for web browsers
 hls: yes
 hlsAddress: :8888
 hlsAllowOrigin: "*"
-hlsVariant: lowLatency
-hlsSegmentCount: 7
-hlsSegmentDuration: 1s
-hlsPartDuration: 200ms
+hlsSegmentCount: 3
+hlsSegmentDuration: 4s
 hlsSegmentMaxSize: 50M
 
+# WebRTC output for low-latency web streaming
 webrtc: yes
 webrtcAddress: :8889
 webrtcAllowOrigin: "*"
-webrtcTrustedProxies: []
 webrtcLocalUDPAddress: :8189
 webrtcIPsFromInterfaces: yes
-webrtcIPsFromInterfacesList: []
-webrtcAdditionalHosts: []
-webrtcICEServers2: []
 
-# Path settings
+# Stream configuration
 paths:
   cam1:
     source: publisher

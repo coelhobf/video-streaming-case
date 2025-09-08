@@ -55,6 +55,9 @@
         "vector": "cpp",
         "algorithm": "cpp",
         "chrono": "cpp",
-        "atomic": "cpp"
+        "atomic": "cpp",
+        "charconv": "cpp",
+        "forward_list": "cpp",
+        "expected": "cpp"
     }
 }

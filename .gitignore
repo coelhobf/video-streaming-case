@@ -1,3 +1,19 @@
-**/assets/
+# Build directories
+**/build/
+
+# Executables
 **/main.out
+pipeline-rtsp/pipeline-rtsp
+pipeline-rtsp-to-srt/pipeline-rtsp-to-srt
+
+# Test videos
+media/
+
+# IDE
 .vscode/
+
+# macOS
+.DS_Store
+
+*.md
+!README.md

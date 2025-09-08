@@ -1,53 +1,27 @@
-.PHONY: all build run start clean stop status cleanport checkport checkvideo
+CXX := g++
+CXXFLAGS := -std=c++23 -Wall -Wextra -O2
+INCLUDES := -I./src $(shell pkg-config --cflags gstreamer-1.0 gstreamer-rtsp-server-1.0)
+LIBS := $(shell pkg-config --libs gstreamer-1.0 gstreamer-rtsp-server-1.0)
 
-CXX = g++
-CXXFLAGS = -std=c++23 -Wall -O2
-PKGS = gstreamer-1.0 gstreamer-rtsp-server-1.0
+SRCDIR := src
+OBJDIR := build
+SOURCES := $(shell find $(SRCDIR) -name "*.cpp")
+OBJECTS := $(SOURCES:$(SRCDIR)/%.cpp=$(OBJDIR)/%.o)
+TARGET := pipeline-rtsp
 
-CXXFLAGS += $(shell pkg-config --cflags $(PKGS))
-LDLIBS   = $(shell pkg-config --libs $(PKGS))
+all: $(TARGET)
 
-PORT ?= 8554
+$(TARGET): $(OBJECTS)
+	$(CXX) $(OBJECTS) -o $@ $(LIBS)
 
-all: main.out
-
-build: main.out
-
-main.out: main.cpp
-	$(CXX) $(CXXFLAGS) $< -o $@ $(LDLIBS)
-
-start: main.out checkvideo
-	./main.out &
-
-status:
-	@echo "Pipeline 1 Status:"
-	@pids=$$(pgrep -f "main.out" 2>/dev/null || true); \
-	if [ -n "$$pids" ]; then echo "  Running (PID: $$pids)"; else echo "  Not running"; fi
-	@lsof -iTCP:$(PORT) -sTCP:LISTEN 2>/dev/null | grep -q ":$(PORT)" && echo "  Port $(PORT): Available" || echo "  Port $(PORT): Not listening"
-
-run: main.out checkvideo
-	-@pids=$$(lsof -t -iTCP:$(PORT) -sTCP:LISTEN); \
-	 if [ -n "$$pids" ]; then echo "Killing PIDs on port $(PORT): $$pids"; kill -9 $$pids || true; else echo "No listeners on $(PORT)"; fi
-	./main.out
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 clean:
-	rm -f main.out
+	rm -rf $(OBJDIR) $(TARGET)
 
-stop:
-	-@pkill -f "/Users/bcoelho/Documents/workspace/paladium/pipeline-rtsp/main.out" || true
-	-@pids=$$(lsof -t -iTCP:$(PORT) -sTCP:LISTEN); if [ -n "$$pids" ]; then kill -9 $$pids || true; fi
+run: $(TARGET)
+	./$(TARGET)
 
-cleanport:
-	-@pids=$$(lsof -t -iTCP:$(PORT) -sTCP:LISTEN); \
-	 if [ -n "$$pids" ]; then echo "Killing PIDs on port $(PORT): $$pids"; kill -9 $$pids || true; else echo "No listeners on $(PORT)"; fi
-
-checkport:
-	@lsof -iTCP:$(PORT) -sTCP:LISTEN || true
-
-checkvideo:
-	@if [ ! -f "assets/test.mp4" ]; then \
-		echo "📹 Video file not found, creating test video..."; \
-		./create_test_video.sh; \
-	else \
-		echo "✅ Video file exists: assets/test.mp4"; \
-	fi
+.PHONY: all clean run
