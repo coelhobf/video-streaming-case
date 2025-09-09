@@ -3,6 +3,7 @@
 #include <atomic>
 #include <signal.h>
 #include <glib.h>
+#include <cstdlib>
 #include "srt_relay.hpp"
 #include "../../utils/logger.hpp"
 
@@ -33,8 +34,14 @@ void signal_handler(int signal) {
 }
 
 int main(int /*argc*/, char* /*argv*/[]) {
-    const std::string rtsp_url = "rtsp://127.0.0.1:8555/cam1";
-    const std::string srt_url = "srt://127.0.0.1:8890";
+    // Use environment variables or fall back to defaults
+    const char* env_rtsp_url = std::getenv("RTSP_URL");
+    const char* env_srt_url = std::getenv("SRT_URL");
+    
+    const std::string rtsp_url = env_rtsp_url ? env_rtsp_url : "rtsp://127.0.0.1:8555/cam1";
+    const std::string srt_url = env_srt_url ? env_srt_url : "srt://127.0.0.1:8890?streamid=publish:cam1";
+
+    std::cout << "srt_url: " << srt_url << std::endl;
 
     auto relay = std::make_unique<SRTRelay>(rtsp_url, srt_url);
     g_relay = relay.get();

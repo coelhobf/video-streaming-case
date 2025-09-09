@@ -58,12 +58,12 @@ std::expected<void, std::string> SRTRelay::create_pipeline() {
 
 std::string SRTRelay::build_pipeline_string() const {
     return std::format(
-        // Connect to RTSP source with aggressive disconnection detection
+        // Connect to RTSP source with TCP transport (fixes UDP address family errors)
         "rtspsrc location={} "
-        // Use TCP for RTSP, enable keep-alive, reduce latency for faster detection
-        "protocols=tcp do-rtsp-keep-alive=true latency=100 "
-        // Add timeouts for faster disconnection detection
-        "timeout=5000000 tcp-timeout=5000000 retry=3 ! "
+        // Force TCP for container networking, disable UDP to avoid Docker networking issues
+        "protocols=tcp do-rtsp-keep-alive=true latency=200 "
+        // Timeouts optimized for container networking
+        "timeout=10000000 tcp-timeout=10000000 retry=5 ! "
         // Depayload RTP packets to extract H.264 video
         "rtph264depay ! "
         // Parse H.264 stream, send SPS/PPS with every keyframe
@@ -74,8 +74,8 @@ std::string SRTRelay::build_pipeline_string() const {
         "mpegtsmux ! "
         // Output MPEG-TS over SRT to the given URI
         "srtclientsink uri={} "
-        // Set SRT streamid, caller mode, don't wait for connection
-        "streamid=publish:cam1 mode=caller wait-for-connection=false",
+        // Set SRT caller mode, don't wait for connection
+        "mode=caller wait-for-connection=false",
         rtsp_url_, srt_url_
     );
 }
@@ -138,6 +138,10 @@ void SRTRelay::shutdown() {
 }
 
 gboolean SRTRelay::on_bus_message(GstBus* /*bus*/, GstMessage* message, gpointer user_data) {
+    if(!user_data) {
+        return FALSE;
+    }
+
     SRTRelay* relay = static_cast<SRTRelay*>(user_data);
     GError* error = nullptr;
     gchar* debug = nullptr;

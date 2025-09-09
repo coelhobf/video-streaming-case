@@ -10,11 +10,17 @@ services:
       - "8890:8890/udp"
       - "8189:8189/udp"
       - "9997:9997/tcp"
-      - "9998:9998/tcp"
+      - "9996:9996/tcp"
+      - "9998:9998/udp"
     environment:
       - MTX_CONFIG=/mediamtx.yml
     volumes:
       - ./mediamtx.yml:/mediamtx.yml:ro
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9996/metrics"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   webui:
     image: nginx:alpine

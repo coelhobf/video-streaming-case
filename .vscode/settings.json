@@ -58,6 +58,18 @@
         "atomic": "cpp",
         "charconv": "cpp",
         "forward_list": "cpp",
-        "expected": "cpp"
+        "expected": "cpp",
+        "bit": "cpp",
+        "cerrno": "cpp",
+        "compare": "cpp",
+        "concepts": "cpp",
+        "cstddef": "cpp",
+        "exception": "cpp",
+        "functional": "cpp",
+        "iterator": "cpp",
+        "ostream": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp",
+        "utility": "cpp"
     }
 }

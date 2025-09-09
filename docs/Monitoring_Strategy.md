@@ -7,15 +7,15 @@ This document describes the monitoring capabilities that **currently exist** in 
 ## Existing Components
 
 **Pipeline 1 (File → RTSP) - C++ GStreamer**
-- Process: `pipeline-rtsp/main.out` executable
-- RTSP server on port 8554
-- Serves `assets/test.mp4` file
+- Process: `pipeline-rtsp` executable
+- RTSP server on port 8555
+- Serves `media/sample.mp4` file
 - No automatic restart capability
 - No built-in monitoring endpoints
 
 **Pipeline 2 (RTSP → SRT) - C++ GStreamer**
-- Process: `pipeline-rtsp-to-srt/main.out` executable  
-- Consumes RTSP from localhost:8554/cam1
+- Process: `pipeline-rtsp-to-srt` executable  
+- Consumes RTSP from localhost:8555/cam1
 - Publishes to SRT localhost:8890
 - Built-in automatic restart on errors/EOS
 - 2-second restart delay
@@ -24,12 +24,12 @@ This document describes the monitoring capabilities that **currently exist** in 
 **Pipeline 3 (MediaMTX Server) - Docker Container**
 - MediaMTX container with API endpoints
 - Web UI container serving static files
-- Configured ports: 8554, 8888, 8889, 8890, 8189, 9997, 9998, 8080
+- Configured ports: 8554, 8888, 8889, 8890/udp, 8189/udp, 9996, 9997, 8080
 - Built-in Prometheus metrics endpoint
 
 ## Available Monitoring Endpoints
 
-**MediaMTX API (Currently Active)**
+**MediaMTX API and Metrics (Currently Active)**
 ```bash
 # Health check - lists all paths
 curl http://localhost:9997/v3/paths/list
@@ -41,7 +41,7 @@ curl http://localhost:9997/v3/paths/get/cam1
 curl http://localhost:9997/v3/config/global/get
 
 # Prometheus metrics
-curl http://localhost:9998/metrics
+curl http://localhost:9996/metrics
 ```
 
 ## Existing Test Commands
@@ -63,7 +63,7 @@ cd server && make status
 **Stream Validation (Existing)**
 ```bash
 # Test RTSP stream (from Makefile)
-timeout 5s gst-launch-1.0 rtspsrc location=rtsp://localhost:8554/cam1 ! fakesink
+timeout 5s gst-launch-1.0 rtspsrc location=rtsp://localhost:8555/cam1 ! fakesink
 
 # Test HLS availability (from Makefile)
 curl -sf http://localhost:8888/cam1/index.m3u8
@@ -96,10 +96,10 @@ curl -sf http://localhost:8080
 **Check Running Processes**
 ```bash
 # Pipeline 1
-pgrep -f "pipeline-rtsp.*main.out"
+pgrep -f "pipeline-rtsp"
 
 # Pipeline 2  
-pgrep -f "pipeline-rtsp-to-srt.*main.out"
+pgrep -f "pipeline-rtsp-to-srt"
 
 # Docker containers
 docker ps --filter "name=mediamtx"
@@ -109,13 +109,13 @@ docker ps --filter "name=webui"
 **Port Status**
 ```bash
 # RTSP port
-lsof -iTCP:8554 -sTCP:LISTEN
+lsof -iTCP:8555 -sTCP:LISTEN
 
 # SRT port
 lsof -iUDP:8890
 
-# Web ports
-lsof -iTCP:8080,8888,8889,9997,9998 -sTCP:LISTEN
+# Web/API/Metrics ports
+lsof -iTCP:8080,8888,8889,9996,9997 -sTCP:LISTEN
 ```
 
 ## Current Limitations
@@ -140,11 +140,11 @@ lsof -iTCP:8080,8888,8889,9997,9998 -sTCP:LISTEN
 ## Available URLs for Manual Testing
 
 **Streams:**
-- RTSP: `rtsp://localhost:8554/cam1`
-- SRT (VLC): `srt://localhost:8890?streamid=read:cam1`
+- RTSP: `rtsp://localhost:8555/cam1`
+- SRT (VLC/ffplay): `srt://localhost:9998?streamid=read:cam1`
 - HLS: `http://localhost:8888/cam1/index.m3u8`
 - Web UI: `http://localhost:8080`
 
 **Management:**
 - MediaMTX API: `http://localhost:9997/v3/paths/list`
-- Metrics: `http://localhost:9998/metrics`
+- Metrics: `http://localhost:9996/metrics`

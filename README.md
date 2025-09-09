@@ -1,95 +1,142 @@
 # Paladium Video Pipeline
 
-A video streaming pipeline that converts MP4 files to RTSP, then to SRT, and serves via WebRTC/HLS.
+A video streaming pipeline that converts MP4 files to RTSP, then to SRT, and serves multiple output formats (WebRTC, HLS, SRT). Fully containerized with Docker for zero-dependency deployment.
 
 ## Architecture
 
-```
-Pipeline 1: File → RTSP (C++)
-Pipeline 2: RTSP → SRT (C++)  
-Pipeline 3: SRT → WebRTC/HLS (MediaMTX)
+```mermaid
+graph LR
+    A[MP4 File] --> B[RTSP Server]
+    B --> C[SRT Relay] 
+    C --> D[MediaMTX Server]
+    D --> E[Web Interface]
+    D --> F[Multiple Outputs]
+    
+    F --> G[WebRTC :8889]
+    F --> H[HLS :8888] 
+    F --> I[SRT :8890]
+    B --> J[RTSP :8555]
 ```
 
 ## Quick Start
 
 ### Prerequisites
 - Docker and Docker Compose
-- GStreamer: `brew install gstreamer pkgconf`
-- C++ compiler with C++23 support
-- VLC Media Player (for testing)
+- VLC Media Player (for testing streams)
 
-### Run Demo
+### One-Command Demo
 ```bash
-make demo
+make docker-demo
 ```
 
-### Manual Control
+The system will automatically build, start all services, and show access URLs.
+
+### Available Commands
 ```bash
-make build    # Build all components
-make start    # Start all pipelines
-make status   # Check status
-make stop     # Stop all pipelines
-make test     # Test all streams
+make docker-build    # Build all images
+make docker-up       # Start all services  
+make docker-down     # Stop all services
+make docker-logs     # View logs
+make docker-clean    # Clean all resources
+
+# Local development (requires GStreamer + C++23 compiler)
+make build           # Build locally
+make start          # Start locally
+make stop           # Stop all
 ```
 
-## Test URLs
+## Access Points
 
-**Web Interface:** http://localhost:8080
-**VLC RTSP:** rtsp://localhost:8554/cam1
-**VLC SRT:** srt://localhost:8890?streamid=read:cam1
+| Service | URL | Description |
+|---------|-----|-------------|
+| **Web Interface** | http://localhost:8080 | HLS & WebRTC playback |
+| **RTSP (VLC)** | rtsp://localhost:8555/cam1 | Direct RTSP stream |
+| **SRT (VLC)** | srt://localhost:9998?streamid=read:cam1 | SRT stream |
+| **HLS** | http://localhost:8888/cam1/index.m3u8 | HLS playlist |
+| **MediaMTX API** | http://localhost:9997 | Server API |
+| **Metrics** | http://localhost:9996/metrics | Prometheus metrics |
 
 ## Project Structure
 
 ```
 paladium/
-├── Makefile                    # Main pipeline control
-├── pipeline-rtsp/              # Pipeline 1: File → RTSP
-│   ├── main.cpp               # C++ GStreamer RTSP server
-│   ├── Makefile               # Build and run commands
-│   ├── create_test_video.sh   # Auto-create test video
-│   └── assets/test.mp4        # Test video file (auto-created)
-├── pipeline-rtsp-to-srt/       # Pipeline 2: RTSP → SRT
-│   ├── main.cpp               # C++ GStreamer SRT publisher
-│   └── Makefile               # Build and run commands
-└── server/                     # Pipeline 3: SRT → WebRTC/HLS
-    ├── docker-compose.yml     # MediaMTX and web UI containers
-    ├── mediamtx.yml           # MediaMTX configuration
-    └── web/index.html         # Browser playback interface
+├── Makefile                    # Main commands
+├── docker-compose.yml          # Docker orchestration
+├── pipeline-rtsp/              # Pipeline 1: MP4 → RTSP
+├── pipeline-rtsp-to-srt/       # Pipeline 2: RTSP → SRT  
+├── server/                     # Pipeline 3: MediaMTX + Web UI
+├── media/sample.mp4            # Test video
+└── docker/healthcheck/         # Health monitoring
 ```
 
 ## Monitoring
 
-**Available Endpoints:**
-- Health Check: `curl http://localhost:9997/v3/paths/list`
-- Stream Info: `curl http://localhost:9997/v3/paths/get/cam1`
-- Metrics: `curl http://localhost:9998/metrics`
+**Docker Health Checks:**
+```bash
+docker-compose ps              # Service status
+make docker-logs              # Live logs
+```
 
-See `docs/Monitoring_Strategy.md` for current monitoring capabilities.
+**API Endpoints:**
+- Health: `curl http://localhost:9997/v3/paths/list`
+- Stream Info: `curl http://localhost:9997/v3/paths/get/cam1`
+- Web Interface: http://localhost:8080
+
+## Features
+
+- **Zero Dependencies**: Fully containerized with Docker
+- **Multi-Protocol Output**: WebRTC, HLS, SRT, RTSP
+- **Automatic Recovery**: Health checks with restart on failure
+- **Single Command Deploy**: `make docker-demo` starts everything
 
 ## Troubleshooting
 
-**Pipeline 2 won't connect:**
+**Services not starting:**
 ```bash
-make pipeline1    # Start Pipeline 1 first
-sleep 3           # Wait for RTSP to be ready
-make pipeline2    # Then start Pipeline 2
+make docker-logs              # Check logs
+docker-compose ps             # Check status
+make docker-clean docker-up   # Clean restart
 ```
 
 **Port conflicts:**
 ```bash
-lsof -i :8554     # RTSP
-lsof -i :8890     # SRT  
+lsof -i :8555     # RTSP Server
 lsof -i :8080     # Web UI
+lsof -i :9998     # SRT (read+publish)
 ```
 
-**Check logs:**
+**Stream not playing:**
 ```bash
-docker logs mediamtx
+# Test individual services
+curl http://localhost:9997/v3/paths/list          # MediaMTX health
+curl http://localhost:8888/cam1/index.m3u8        # HLS availability
 ```
 
-## Technical Details
+**Metrics & Health:**
+```bash
+curl -sf http://localhost:9997/v3/paths/list    # API health
+curl -sf http://localhost:9996/metrics | head   # Metrics
+```
 
-- **Pipeline 1**: Creates RTSP stream from MP4 file (auto-creates test video if missing)
-- **Pipeline 2**: Consumes RTSP, publishes to SRT (auto-restart on errors)
-- **Pipeline 3**: MediaMTX server exposes SRT as WebRTC/HLS
-- **Resilience**: Pipeline 2 has automatic restart, others require manual restart
+## How It Works
+
+1. **Pipeline 1**: Serves MP4 file as RTSP stream
+2. **Pipeline 2**: Converts RTSP to SRT with automatic reconnection  
+3. **Pipeline 3**: MediaMTX server converts SRT to WebRTC/HLS/SRT outputs
+4. **Web Interface**: Browser-based player for WebRTC and HLS streams
+
+## Development
+
+For local development:
+```bash
+# Install dependencies  
+brew install gstreamer pkgconf
+
+# Build and run locally
+make build
+make start
+```
+
+---
+
+**Quick Test:** After running `make docker-demo`, open http://localhost:8080 and click "Play HLS" or "Play WebRTC" to see your video stream!

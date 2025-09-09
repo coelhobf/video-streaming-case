@@ -2,6 +2,7 @@
 #include <memory>
 #include <signal.h>
 #include <filesystem>
+#include <cstdlib>
 #include "rtsp_server.hpp"
 
 using namespace paladium;
@@ -16,7 +17,9 @@ void signal_handler(int signal) {
 }
 
 int main(int /*argc*/, char* /*argv*/[]) {
-    const std::string media_file = "../media/sample.mp4";
+    // Use environment variable or fall back to default
+    const char* env_media_file = std::getenv("MEDIA_FILE");
+    const std::string media_file = env_media_file ? env_media_file : "../media/sample.mp4";
     const uint16_t rtsp_port = 8555;
 
     if (!std::filesystem::exists(media_file)) {

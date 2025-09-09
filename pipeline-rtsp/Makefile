@@ -24,4 +24,19 @@ clean:
 run: $(TARGET)
 	./$(TARGET)
 
-.PHONY: all clean run
+# Docker commands
+docker-build:
+	docker build -t paladium-pipeline-rtsp .
+
+docker-run: docker-build
+	docker run --rm -p 8555:8555 -v $(PWD)/../media:/media paladium-pipeline-rtsp
+
+# Aliases for consistency
+build: all
+start: run
+stop:
+	@pkill -f pipeline-rtsp || true
+status:
+	@pgrep -f pipeline-rtsp > /dev/null && echo "✅ Running" || echo "❌ Not running"
+
+.PHONY: all clean run docker-build docker-run start stop status build

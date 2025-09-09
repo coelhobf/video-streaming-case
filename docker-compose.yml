@@ -1,0 +1,117 @@
+# Docker Compose file for Paladium Video Pipeline
+
+networks:
+  paladium-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  media-volume:
+    driver: local
+
+services:
+  # Pipeline 1: MP4 to RTSP Server
+  pipeline-rtsp:
+    build:
+      context: .
+      dockerfile: ./pipeline-rtsp/Dockerfile
+    image: paladium-pipeline-rtsp:latest
+    container_name: paladium-rtsp
+    restart: unless-stopped
+    networks:
+      - paladium-net
+    ports:
+      - "8555:8555"
+    volumes:
+      - ./media:/media:ro
+      - ./docker/healthcheck:/healthcheck:ro
+    environment:
+      - MEDIA_FILE=${RTSP_MEDIA_FILE:-/media/sample.mp4}
+      - RTSP_PORT=${RTSP_PORT:-8555}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - GST_DEBUG=${GST_DEBUG:-3}
+    healthcheck:
+      test: ["CMD", "/healthcheck/rtsp-health.sh"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Pipeline 2: RTSP to SRT Relay
+  pipeline-srt-relay:
+    build:
+      context: .
+      dockerfile: ./pipeline-rtsp-to-srt/Dockerfile
+    image: paladium-pipeline-srt:latest
+    container_name: paladium-srt-relay
+    restart: unless-stopped
+    networks:
+      - paladium-net
+    volumes:
+      - ./docker/healthcheck:/healthcheck:ro
+    environment:
+      - RTSP_URL=${SRT_RELAY_RTSP_URL:-rtsp://pipeline-rtsp:8555/cam1}
+      - SRT_URL=${SRT_RELAY_SRT_URL:-srt://mediamtx:9998?streamid=publish:cam1}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - GST_DEBUG=${GST_DEBUG:-3}
+    depends_on:
+      pipeline-rtsp:
+        condition: service_healthy
+      mediamtx:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/healthcheck/srt-health.sh"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # Pipeline 3: MediaMTX Server
+  mediamtx:
+    image: bluenviron/mediamtx:latest-ffmpeg
+    container_name: paladium-mediamtx
+    restart: unless-stopped
+    networks:
+      - paladium-net
+    ports:
+      - "8554:8554"     # RTSP (output)
+      - "8888:8888"     # HLS
+      - "8889:8889"     # WebRTC
+      - "8890:8890/udp" # SRT (read)
+      - "8189:8189/udp" # WebRTC media UDP
+      - "9997:9997"     # API
+      - "9996:9996"     # Metrics
+      - "9998:9998/udp" # SRT (publish)
+    environment:
+      - MTX_CONFIG=/mediamtx.yml
+    volumes:
+      - ./server/mediamtx.yml:/mediamtx.yml:ro
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9996/metrics"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Web UI
+  webui:
+    image: nginx:alpine
+    container_name: paladium-webui
+    restart: unless-stopped
+    networks:
+      - paladium-net
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./server/web:/usr/share/nginx/html:ro
+      - ./server/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - mediamtx
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+

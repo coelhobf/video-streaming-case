@@ -37,16 +37,32 @@ std::expected<void, std::string> MediaPipeline::create_factory() {
 
 std::string MediaPipeline::build_pipeline_string() const {
     return std::format(
-        // Read MP4 file from disk
-        "filesrc location={} ! "
-        // Demux MP4 container (separate video/audio tracks)
-        "qtdemux name=demux ! "
-        // Buffer data to smooth playback
-        "queue ! "
-        // Parse H.264 video stream structure
-        "h264parse ! "
-        // Package H.264 into RTP packets for RTSP
-        "rtph264pay name=pay0 pt=96",
+        // Cross-platform file-based pipeline: works on both macOS and Ubuntu Docker
+        "( "
+            // Read video file from filesystem
+            "filesrc location={} "
+        "! "
+            // Demultiplex MP4 container - separates video/audio streams  
+            // Uses explicit naming 'd' for cross-platform pad referencing
+            "qtdemux name=d "
+            // CRITICAL: Explicitly connect to video_0 pad
+            // This solves "not-linked" errors in Ubuntu Docker containers
+            // macOS auto-links, but Ubuntu requires explicit pad connection
+            "d.video_0 "
+        "! "
+            // Buffer video data to smooth playback and prevent underruns
+            // Essential for network streaming to handle timing variations
+            "queue "
+        "! "
+            // Parse H.264 video stream structure
+            // Extracts SPS/PPS headers and ensures proper stream formatting
+            "h264parse "
+        "! "
+            // Package H.264 into RTP packets for RTSP streaming
+            // pt=96: RTP payload type for H.264 video
+            // name=pay0: Named element required by RTSP media factory
+            "rtph264pay name=pay0 pt=96 "
+        ")",
         media_file_
     );
 }
